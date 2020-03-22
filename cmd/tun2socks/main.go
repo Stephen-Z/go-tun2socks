@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"strings"
@@ -16,6 +17,10 @@ import (
 	_ "github.com/eycorsican/go-tun2socks/common/log/simple" // Register a simple logger.
 	"github.com/eycorsican/go-tun2socks/core"
 	"github.com/eycorsican/go-tun2socks/tun"
+
+	"net"
+
+	"github.com/eycorsican/go-tun2socks/proxy/socks"
 )
 
 var version = "undefined"
@@ -60,7 +65,7 @@ const (
 var flagCreaters = map[cmdFlag]func(){
 	fProxyServer: func() {
 		if args.ProxyServer == nil {
-			args.ProxyServer = flag.String("proxyServer", "1.2.3.4:1087", "Proxy server address")
+			args.ProxyServer = flag.String("proxyServer", "127.0.0.1:1082", "Proxy server address")
 		}
 	},
 	fUdpTimeout: func() {
@@ -88,15 +93,17 @@ const (
 
 func main() {
 	args.Version = flag.Bool("version", false, "Print version")
-	args.TunName = flag.String("tunName", "tun1", "TUN interface name")
+	args.TunName = flag.String("tunName", "mellow-tap0", "TUN interface name")
 	args.TunAddr = flag.String("tunAddr", "10.255.0.2", "TUN interface address")
 	args.TunGw = flag.String("tunGw", "10.255.0.1", "TUN interface gateway")
 	args.TunMask = flag.String("tunMask", "255.255.255.0", "TUN interface netmask, it should be a prefixlen (a number) for IPv6 address")
-	args.TunDns = flag.String("tunDns", "8.8.8.8,8.8.4.4", "DNS resolvers for TUN interface (only need on Windows)")
+	args.TunDns = flag.String("tunDns", "114.114.114.114,8.8.4.4", "DNS resolvers for TUN interface (only need on Windows)")
 	args.TunPersist = flag.Bool("tunPersist", false, "Persist TUN interface after the program exits or the last open file descriptor is closed (Linux only)")
 	args.BlockOutsideDns = flag.Bool("blockOutsideDns", false, "Prevent DNS leaks by blocking plaintext DNS queries going out through non-TUN interface (may require admin privileges) (Windows only) ")
 	args.ProxyType = flag.String("proxyType", "socks", "Proxy handler type")
 	args.LogLevel = flag.String("loglevel", "info", "Logging level. (debug, info, warn, error, none)")
+	args.ProxyServer = flag.String("proxyServer", "127.0.0.1:1084", "Proxy server address")
+	args.UdpTimeout = flag.Duration("udpTimeout", 1*time.Minute, "UDP session timeout")
 
 	flag.Parse()
 
@@ -127,6 +134,32 @@ func main() {
 	default:
 		panic("unsupport logging level")
 	}
+
+	//start up v2ray
+	go func() {
+		cmd := exec.Command("./v2ray/v2ray.exe")
+		stdoutStderr, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Infof("", err)
+		}
+		fmt.Printf("%s\n", stdoutStderr)
+	}()
+
+	//setup windows route...
+
+	//register socks handler
+	registerHandlerCreater("socks", func() {
+		// Verify proxy server address.
+		proxyAddr, err := net.ResolveTCPAddr("tcp", *args.ProxyServer)
+		if err != nil {
+			log.Fatalf("invalid proxy server address: %v", err)
+		}
+		proxyHost := proxyAddr.IP.String()
+		proxyPort := uint16(proxyAddr.Port)
+
+		core.RegisterTCPConnHandler(socks.NewTCPHandler(proxyHost, proxyPort))
+		core.RegisterUDPConnHandler(socks.NewUDPHandler(proxyHost, proxyPort, *args.UdpTimeout))
+	})
 
 	// Open the tun device.
 	dnsServers := strings.Split(*args.TunDns, ",")
@@ -169,6 +202,7 @@ func main() {
 	// Copy packets from tun device to lwip stack, it's the main loop.
 	go func() {
 		_, err := io.CopyBuffer(lwipWriter, tunDev, make([]byte, MTU))
+
 		if err != nil {
 			log.Fatalf("copying data failed: %v", err)
 		}

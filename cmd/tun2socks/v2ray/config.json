@@ -1,0 +1,47 @@
+{
+	"log": {
+		"loglevel": "warning",
+		"access": "v2ray/logs/access.log",
+		"error": "v2ray/logs/error.log"
+	},
+	"inbounds": [
+		{
+			"port": 20086,
+			"protocol": "socks",
+			"sniffing": {
+				"enabled": true,
+				"destOverride": [
+					"http",
+					"tls"
+				]
+			},
+			"settings": {
+				"auth": "noauth",
+				"udp": true
+			}
+		}
+	],
+	"outbounds": [
+		{
+			"protocol": "vmess",
+			"settings": {
+			  "vnext": [{
+				"address": "www.xswtech.com",
+				"port": 20001,
+				"users": [{"id": "3c673e19-62db-47f7-aa1b-f732a559361d"}]
+			  }]
+			},
+			"tag": "vpn"
+		}
+	],
+	"routing": {
+		"domainStrategy": "IPOnDemand",
+		"rules": [
+			{
+				"type": "field",
+				"outboundTag": "vpn",
+				"network": "tcp,udp"
+			}
+		]
+	}
+}
