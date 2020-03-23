@@ -160,9 +160,9 @@ func getTuntapComponentId(ifaceName string) (string, string, error) {
 func OpenTunDevice(name, addr, gw, mask string, dns []string, persist bool) (io.ReadWriteCloser, error) {
 	componentId, devName, err := getTuntapComponentId(name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get component ID: %v", err)
+		return nil, fmt.Errorf("未能找到TAP驱动，请先安装TAP驱动: %v", err)
 	}
-	log.Printf("TAP device name: %s", devName)
+	log.Printf("寻获TAP驱动: %s", devName)
 
 	devId, _ := windows.UTF16FromString(fmt.Sprintf(`\\.\Global\%s.tap`, componentId))
 	// set dhcp with netsh

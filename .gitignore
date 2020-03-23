@@ -1,3 +1,4 @@
 /build
 /tools
 .DS_Store
+/cmd/tun2socks/v2ray/logs

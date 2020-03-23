@@ -135,17 +135,31 @@ func main() {
 		panic("unsupport logging level")
 	}
 
-	//start up v2ray
+	//start up v2ray and system route
 	go func() {
-		cmd := exec.Command("./v2ray/v2ray.exe")
+		//smb route
+		smbRouteCmd := exec.Command(".\\utils\\SMBRoute.bat")
+		smbRouteCmdOutput, err := smbRouteCmd.CombinedOutput()
+		if err != nil {
+			log.Infof("SMB vpn route setting failed!", err)
+		}
+		fmt.Printf("SMB vpn route setting %s\n", smbRouteCmdOutput)
+
+		//remote route
+		remoteRouteCmd := exec.Command(".\\utils\\RemoteRoute.bat")
+		remoteRouteCmdOutput, err := remoteRouteCmd.CombinedOutput()
+		if err != nil {
+			log.Infof("Remote vpn route setting failed!", err)
+		}
+		fmt.Printf("Remote vpn route setting %s\n", remoteRouteCmdOutput)
+
+		cmd := exec.Command(".\\v2ray\\v2ray.exe")
 		stdoutStderr, err := cmd.CombinedOutput()
 		if err != nil {
-			log.Infof("", err)
+			log.Infof("V2ray Startup Failed! ", err)
 		}
 		fmt.Printf("%s\n", stdoutStderr)
 	}()
-
-	//setup windows route...
 
 	//register socks handler
 	registerHandlerCreater("socks", func() {
@@ -208,7 +222,7 @@ func main() {
 		}
 	}()
 
-	log.Infof("Running tun2socks")
+	log.Infof("VPN 连接成功 ")
 
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
