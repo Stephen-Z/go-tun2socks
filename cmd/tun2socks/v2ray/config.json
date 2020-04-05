@@ -8,16 +8,9 @@
 		{
 			"port": 20086,
 			"protocol": "socks",
-			"sniffing": {
-				"enabled": true,
-				"destOverride": [
-					"http",
-					"tls"
-				]
-			},
 			"settings": {
 				"auth": "noauth",
-				"udp": true
+				"udp": false
 			}
 		}
 	],
@@ -28,7 +21,7 @@
 			  "vnext": [{
 				"address": "www.xswtech.com",
 				"port": 20001,
-				"users": [{"id": "3c673e19-62db-47f7-aa1b-f732a559361d"}]
+				"users": [{"id": "6c857c28-3fa3-4b7b-a8e6-946bf48f3d3a"}]
 			  }]
 			},
 			"tag": "vpn"

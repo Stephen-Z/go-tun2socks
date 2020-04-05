@@ -65,9 +65,11 @@ func (h *udpHandler) fetchUDPInput(conn core.UDPConn, input net.PacketConn) {
 		input.SetDeadline(time.Now().Add(h.timeout))
 		n, _, err := input.ReadFrom(buf)
 		if err != nil {
+			log.Infof("Read time out ...")
 			return
 		}
 		if len(buf) < 3 {
+			log.Infof("Read buffer less than 3 ...")
 			return
 		}
 		addr := SplitAddr(buf[3:])
@@ -151,7 +153,7 @@ func (h *udpHandler) connectInternal(conn core.UDPConn, dest string) error {
 
 	go h.fetchUDPInput(conn, pc)
 
-	log.Infof("new proxy connection to %v", dest)
+	log.Infof("new udp proxy connection to %v", dest)
 
 	return nil
 }

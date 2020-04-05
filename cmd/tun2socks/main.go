@@ -93,7 +93,7 @@ const (
 
 func main() {
 	args.Version = flag.Bool("version", false, "Print version")
-	args.TunName = flag.String("tunName", "mellow-tap0", "TUN interface name")
+	args.TunName = flag.String("tunName", "TAP", "TUN interface name")
 	args.TunAddr = flag.String("tunAddr", "10.255.0.2", "TUN interface address")
 	args.TunGw = flag.String("tunGw", "10.255.0.1", "TUN interface gateway")
 	args.TunMask = flag.String("tunMask", "255.255.255.0", "TUN interface netmask, it should be a prefixlen (a number) for IPv6 address")
@@ -102,8 +102,8 @@ func main() {
 	args.BlockOutsideDns = flag.Bool("blockOutsideDns", false, "Prevent DNS leaks by blocking plaintext DNS queries going out through non-TUN interface (may require admin privileges) (Windows only) ")
 	args.ProxyType = flag.String("proxyType", "socks", "Proxy handler type")
 	args.LogLevel = flag.String("loglevel", "info", "Logging level. (debug, info, warn, error, none)")
-	args.ProxyServer = flag.String("proxyServer", "127.0.0.1:1084", "Proxy server address")
-	args.UdpTimeout = flag.Duration("udpTimeout", 1*time.Minute, "UDP session timeout")
+	args.ProxyServer = flag.String("proxyServer", "127.0.0.1:20086", "Proxy server address")
+	args.UdpTimeout = flag.Duration("udpTimeout", 1*time.Hour, "UDP session timeout")
 
 	flag.Parse()
 
@@ -134,32 +134,6 @@ func main() {
 	default:
 		panic("unsupport logging level")
 	}
-
-	//start up v2ray and system route
-	go func() {
-		//smb route
-		smbRouteCmd := exec.Command(".\\utils\\SMBRoute.bat")
-		smbRouteCmdOutput, err := smbRouteCmd.CombinedOutput()
-		if err != nil {
-			log.Infof("SMB vpn route setting failed!", err)
-		}
-		fmt.Printf("SMB vpn route setting %s\n", smbRouteCmdOutput)
-
-		//remote route
-		remoteRouteCmd := exec.Command(".\\utils\\RemoteRoute.bat")
-		remoteRouteCmdOutput, err := remoteRouteCmd.CombinedOutput()
-		if err != nil {
-			log.Infof("Remote vpn route setting failed!", err)
-		}
-		fmt.Printf("Remote vpn route setting %s\n", remoteRouteCmdOutput)
-
-		cmd := exec.Command(".\\v2ray\\v2ray.exe")
-		stdoutStderr, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Infof("V2ray Startup Failed! ", err)
-		}
-		fmt.Printf("%s\n", stdoutStderr)
-	}()
 
 	//register socks handler
 	registerHandlerCreater("socks", func() {
@@ -222,7 +196,43 @@ func main() {
 		}
 	}()
 
-	log.Infof("VPN 连接成功 ")
+	//start up v2ray and system route
+	go func() {
+		//smb route
+		somethingFailed := 0
+		smbRouteCmd := exec.Command(".\\utils\\SMBRoute.bat")
+		smbRouteCmdOutput, err := smbRouteCmd.CombinedOutput()
+		if err != nil {
+			log.Infof("SMB vpn route setting failed!", err)
+			somethingFailed = 1
+		}
+		fmt.Printf("SMB vpn route setting %s\n", smbRouteCmdOutput)
+
+		//remote route
+		remoteRouteCmd := exec.Command(".\\utils\\RemoteRoute.bat")
+		remoteRouteCmdOutput, err := remoteRouteCmd.CombinedOutput()
+		if err != nil {
+			log.Infof("Remote vpn route setting failed!", err)
+			somethingFailed = 1
+		}
+		fmt.Printf("Remote vpn route setting %s\n", remoteRouteCmdOutput)
+
+		if somethingFailed == 0 {
+			log.Infof("VPN 连接成功 ")
+		} else {
+			log.Infof("VPN 启动失败。。。 ")
+		}
+
+		cmd := exec.Command(".\\v2ray\\v2ray.exe")
+		stdoutStderr, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Infof("V2ray Startup Failed! ", err)
+		}
+		fmt.Printf("%s\n", stdoutStderr)
+
+	}()
+
+	// log.Infof("VPN 连接成功 ")
 
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
