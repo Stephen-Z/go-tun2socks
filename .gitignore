@@ -3,3 +3,5 @@
 .DS_Store
 /cmd/tun2socks/v2ray/logs
 /cmd/tun2socks/tun2socks.exe
+/cmd/tun2socks/tun2socks
+.vscode

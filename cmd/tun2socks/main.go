@@ -102,7 +102,7 @@ func main() {
 	args.BlockOutsideDns = flag.Bool("blockOutsideDns", false, "Prevent DNS leaks by blocking plaintext DNS queries going out through non-TUN interface (may require admin privileges) (Windows only) ")
 	args.ProxyType = flag.String("proxyType", "socks", "Proxy handler type")
 	args.LogLevel = flag.String("loglevel", "info", "Logging level. (debug, info, warn, error, none)")
-	args.ProxyServer = flag.String("proxyServer", "127.0.0.1:20086", "Proxy server address")
+	args.ProxyServer = flag.String("proxyServer", "127.0.0.1:1082", "Proxy server address")
 	args.UdpTimeout = flag.Duration("udpTimeout", 1*time.Hour, "UDP session timeout")
 
 	flag.Parse()
@@ -196,43 +196,19 @@ func main() {
 		}
 	}()
 
-	//start up v2ray and system route
-	go func() {
-		//smb route
-		somethingFailed := 0
-		smbRouteCmd := exec.Command(".\\utils\\SMBRoute.bat")
-		smbRouteCmdOutput, err := smbRouteCmd.CombinedOutput()
-		if err != nil {
-			log.Infof("SMB vpn route setting failed!", err)
-			somethingFailed = 1
-		}
-		fmt.Printf("SMB vpn route setting %s\n", smbRouteCmdOutput)
+	cmd := exec.Command("sh", "-c", "ip link set TAP up")
+	cmd.Run()
+	cmd1 := exec.Command("sh", "-c", "ip addr add 10.255.0.2/24 dev TAP")
+	cmd1.Run()
 
-		//remote route
-		remoteRouteCmd := exec.Command(".\\utils\\RemoteRoute.bat")
-		remoteRouteCmdOutput, err := remoteRouteCmd.CombinedOutput()
-		if err != nil {
-			log.Infof("Remote vpn route setting failed!", err)
-			somethingFailed = 1
-		}
-		fmt.Printf("Remote vpn route setting %s\n", remoteRouteCmdOutput)
+	cmd2 := exec.Command("sh", "-c", "ip route add 192.168.168.0/24 via 10.255.0.1 dev TAP")
+	cmd2.Run()
+	cmd3 := exec.Command("sh", "-c", "ip route add 192.168.169.0/24 via 10.255.0.1 dev TAP")
+	cmd3.Run()
+	cmd4 := exec.Command("sh", "-c", "ip route add 192.168.180.0/24 via 10.255.0.1 dev TAP")
+	cmd4.Run()
 
-		if somethingFailed == 0 {
-			log.Infof("VPN 连接成功 ")
-		} else {
-			log.Infof("VPN 启动失败。。。 ")
-		}
-
-		cmd := exec.Command(".\\v2ray\\v2ray.exe")
-		stdoutStderr, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Infof("V2ray Startup Failed! ", err)
-		}
-		fmt.Printf("%s\n", stdoutStderr)
-
-	}()
-
-	// log.Infof("VPN 连接成功 ")
+	log.Infof("VPN 连接成功 ")
 
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
